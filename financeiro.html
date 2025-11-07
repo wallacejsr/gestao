@@ -1,0 +1,1819 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinApp - Controle Financeiro Pessoal</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/index.min.js"></script>
+
+    <!-- Lib para exportar CSV -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+
+    <!-- Ícones (Lucide) -->
+    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide.min.js"></script>
+
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* bg-gray-100 */
+        }
+        .dark body {
+            background-color: #111827; /* bg-gray-900 */
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #4a5568;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+
+        /* Classes de animação */
+        .page {
+            display: none; /* Oculto por padrão */
+            animation: fadeIn 0.3s ease-out;
+        }
+        .page.active {
+            display: block; /* Visível quando ativo */
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Modal styles */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+            animation: modalIn 0.3s ease-out;
+        }
+        .modal.active, .modal-backdrop.active {
+            display: block;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: translate(-50%, -45%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+    </style>
+</head>
+<body class="dark:bg-gray-900 dark:text-gray-100">
+
+    <div class="flex h-screen">
+        <!-- Sidebar (Navegação) -->
+        <aside class="w-64 bg-white dark:bg-gray-800 shadow-lg flex flex-col transition-all duration-300 md:w-64 fixed inset-y-0 left-0 z-20 md:relative -translate-x-full md:translate-x-0" id="sidebar">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">FinApp</h1>
+                <button id="close-sidebar-btn" class="md:hidden text-gray-600 dark:text-gray-400">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <nav class="flex-1 py-4 space-y-2 overflow-y-auto">
+                <a href="#dashboard" class="nav-link group active flex items-center px-6 py-3 text-base font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" data-page="dashboard">
+                    <i data-lucide="layout-dashboard" class="mr-3 h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200"></i>
+                    Dashboard
+                </a>
+                <a href="#lancamentos" class="nav-link group flex items-center px-6 py-3 text-base font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" data-page="lancamentos">
+                    <i data-lucide="arrow-right-left" class="mr-3 h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200"></i>
+                    Lançamentos
+                </a>
+                <a href="#salario" class="nav-link group flex items-center px-6 py-3 text-base font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" data-page="salario">
+                    <i data-lucide="wallet" class="mr-3 h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200"></i>
+                    Salário e Orçamento
+                </a>
+                <a href="#cartoes" class="nav-link group flex items-center px-6 py-3 text-base font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" data-page="cartoes">
+                    <i data-lucide="credit-card" class="mr-3 h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200"></i>
+                    Cartões / Contas
+                </a>
+                <a href="#investimentos" class="nav-link group flex items-center px-6 py-3 text-base font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" data-page="investimentos">
+                    <i data-lucide="trending-up" class="mr-3 h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200"></i>
+                    Investimentos
+                </a>
+                <a href="#categorias" class="nav-link group flex items-center px-6 py-3 text-base font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" data-page="categorias">
+                    <i data-lucide="tags" class="mr-3 h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200"></i>
+                    Categorias
+                </a>
+                <a href="#relatorios" class="nav-link group flex items-center px-6 py-3 text-base font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" data-page="relatorios">
+                    <i data-lucide="file-text" class="mr-3 h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200"></i>
+                    Relatórios
+                </a>
+                <a href="#configuracoes" class="nav-link group flex items-center px-6 py-3 text-base font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" data-page="configuracoes">
+                    <i data-lucide="settings" class="mr-3 h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200"></i>
+                    Configurações
+                </a>
+            </nav>
+            <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                <button id="theme-toggle-btn" class="w-full flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600">
+                    <i data-lucide="sun" class="h-5 w-5 mr-2" id="theme-icon-sun"></i>
+                    <i data-lucide="moon" class="h-5 w-5 mr-2 hidden" id="theme-icon-moon"></i>
+                    <span id="theme-text">Modo Claro</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header (Mobile) -->
+            <header class="md:hidden bg-white dark:bg-gray-800 shadow-md">
+                <div class="flex items-center justify-between px-4 py-3">
+                    <button id="open-sidebar-btn" class="text-gray-600 dark:text-gray-400">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <h1 class="text-xl font-bold text-indigo-600 dark:text-indigo-400">FinApp</h1>
+                    <div class="w-8"></div>
+                </div>
+            </header>
+
+            <!-- Área de Conteúdo (Páginas) -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 p-4 md:p-8">
+                
+                <!-- Página: Dashboard -->
+                <section id="page-dashboard" class="page active">
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Dashboard</h2>
+                    
+                    <!-- Métricas Principais -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Orçamento Mensal</span>
+                                <i data-lucide="dollar-sign" class="h-6 w-6 text-green-500"></i>
+                            </div>
+                            <div id="metric-salario" class="text-3xl font-bold mt-2 text-gray-900 dark:text-gray-100">R$ 0,00</div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Despesas (Mês)</span>
+                                <i data-lucide="arrow-down-circle" class="h-6 w-6 text-red-500"></i>
+                            </div>
+                            <div id="metric-despesas" class="text-3xl font-bold mt-2 text-gray-900 dark:text-gray-100">R$ 0,00</div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Saldo Restante (Orçamento)</span>
+                                <i data-lucide="trending-up" class="h-6 w-6 text-blue-500"></i>
+                            </div>
+                            <div id="metric-saldo" class="text-3xl font-bold mt-2 text-gray-900 dark:text-gray-100">R$ 0,00</div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Balanço Real (Mês)</span>
+                                <i data-lucide="scale" class="h-6 w-6 text-yellow-500"></i>
+                            </div>
+                            <div id="metric-balanco" class="text-3xl font-bold mt-2 text-gray-900 dark:text-gray-100">R$ 0,00</div>
+                            <span id="metric-balanco-sub" class="text-xs text-gray-500 dark:text-gray-400">(Receitas - Despesas)</span>
+                        </div>
+                    </div>
+
+                    <!-- Métricas Secundárias e Previsão -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Orçamento Gasto</span>
+                            <div class="flex items-baseline mt-2">
+                                <span id="metric-percentual-gasto" class="text-2xl font-bold text-gray-900 dark:text-gray-100">0%</span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">do orçamento</span>
+                            </div>
+                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mt-3">
+                                <div id="metric-percentual-gasto-bar" class="bg-indigo-600 h-2.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Gasto Médio Diário (Mês)</span>
+                            <div id="metric-gasto-diario" class="text-2xl font-bold mt-2 text-gray-900 dark:text-gray-100">R$ 0,00</div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-yellow-400">
+                            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Previsão de Saldo Final</span>
+                            <div id="metric-previsao-saldo" class="text-2xl font-bold mt-2 text-gray-900 dark:text-gray-100">R$ 0,00</div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">(Se mantiver o gasto médio)</span>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Gastos por Categoria (Mês)</h3>
+                            <div class="h-64 md:h-80">
+                                <canvas id="chart-gastos-categoria"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Evolução do Saldo (Últimos 30 dias)</h3>
+                             <div class="h-64 md:h-80">
+                                <canvas id="chart-evolucao-saldo"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Comparativo Mensal (Receitas x Despesas)</h3>
+                        <div class="h-80">
+                            <canvas id="chart-comparativo-meses"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Página: Lançamentos -->
+                <section id="page-lancamentos" class="page">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Lançamentos</h2>
+                        <button id="btn-novo-lancamento" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+                            <i data-lucide="plus" class="h-5 w-5 mr-2"></i>
+                            Novo Lançamento
+                        </button>
+                    </div>
+                    
+                    <!-- Filtros -->
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6 flex flex-wrap gap-4 items-center">
+                        <span class="font-medium text-gray-700 dark:text-gray-300">Filtrar por:</span>
+                        <div>
+                            <label for="filter-mes" class="sr-only">Mês</label>
+                            <select id="filter-mes" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                                <!-- Options preenchidas por JS -->
+                            </select>
+                        </div>
+                         <div>
+                            <label for="filter-tipo" class="sr-only">Tipo</label>
+                            <select id="filter-tipo" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                                <option value="todos">Todos os Tipos</option>
+                                <option value="receita">Receitas</option>
+                                <option value="despesa">Despesas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filter-categoria" class="sr-only">Categoria</label>
+                            <select id="filter-categoria" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                                <option value="todas">Todas as Categorias</option>
+                                <!-- Options preenchidas por JS -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tabela de Lançamentos -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-max">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Data</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Descrição</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Categoria</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Valor</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Conta/Cartão</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700" id="lancamentos-table-body">
+                                    <!-- Linhas preenchidas por JS -->
+                                    <tr id="lancamentos-empty-row">
+                                        <td colspan="6" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                            Nenhum lançamento encontrado.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Página: Salário e Orçamento -->
+                <section id="page-salario" class="page">
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Salário e Orçamento</h2>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md max-w-lg mx-auto">
+                        <form id="form-salario">
+                            <div class="mb-4">
+                                <label for="salario-valor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Salário Líquido (Orçamento Mensal)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 dark:text-gray-400">R$</span>
+                                    <input type="number" step="0.01" id="salario-valor" name="salario-valor" class="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="5000.00">
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Este valor será usado como seu limite de gastos (orçamento) no dashboard.</p>
+                            </div>
+                            <div class="mb-6">
+                                <label for="salario-data-pagamento" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data Padrão de Pagamento (Dia do mês)</label>
+                                <input type="number" id="salario-data-pagamento" name="salario-data-pagamento" min="1" max="31" class="px-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="5">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Usado para referência e futuros lembretes.</p>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
+                                <i data-lucide="save" class="h-5 w-5 mr-2"></i>
+                                Salvar Orçamento
+                            </button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Página: Cartões / Contas -->
+                <section id="page-cartoes" class="page">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Cartões e Contas</h2>
+                        <button id="btn-novo-cartao" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+                            <i data-lucide="plus" class="h-5 w-5 mr-2"></i>
+                            Nova Conta/Cartão
+                        </button>
+                    </div>
+                    <div id="cartoes-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Cards de Cartões preenchidos por JS -->
+                        <div id="cartoes-empty-msg" class="col-span-1 md:col-span-2 lg:col-span-3 text-center text-gray-500 dark:text-gray-400 py-12">
+                            Nenhum cartão ou conta cadastrado.
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Página: Investimentos -->
+                <section id="page-investimentos" class="page">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Investimentos a Longo Prazo</h2>
+                        <button id="btn-novo-investimento" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+                            <i data-lucide="plus" class="h-5 w-5 mr-2"></i>
+                            Novo Investimento
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Projeção de Crescimento Total</h3>
+                        <div class="h-80">
+                            <canvas id="chart-investimentos-total"></canvas>
+                        </div>
+                    </div>
+
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Meus Investimentos</h3>
+                    <div id="investimentos-list" class="space-y-4">
+                        <!-- Lista de Investimentos preenchida por JS -->
+                        <div id="investimentos-empty-msg" class="text-center text-gray-500 dark:text-gray-400 py-12">
+                            Nenhum investimento cadastrado.
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Página: Categorias -->
+                <section id="page-categorias" class="page">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Categorias</h2>
+                        <button id="btn-nova-categoria" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+                            <i data-lucide="plus" class="h-5 w-5 mr-2"></i>
+                            Nova Categoria
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Categorias de Receita -->
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-semibold mb-4 text-green-600 dark:text-green-400">Receitas</h3>
+                            <ul id="categorias-list-receita" class="space-y-2">
+                                <!-- JS preenche aqui -->
+                                <li id="categorias-empty-receita" class="text-gray-500 dark:text-gray-400">Nenhuma categoria de receita.</li>
+                            </ul>
+                        </div>
+                        <!-- Categorias de Despesa -->
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-semibold mb-4 text-red-600 dark:text-red-400">Despesas</h3>
+                            <ul id="categorias-list-despesa" class="space-y-2">
+                                <!-- JS preenche aqui -->
+                                <li id="categorias-empty-despesa" class="text-gray-500 dark:text-gray-400">Nenhuma categoria de despesa.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Página: Relatórios -->
+                <section id="page-relatorios" class="page">
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Relatórios e Exportação</h2>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md max-w-md">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Exportar Dados</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4">Exporte seus lançamentos para um arquivo CSV, que pode ser aberto no Excel, Google Sheets ou outro software de planilhas.</p>
+                        
+                        <div class="flex gap-4 mb-4">
+                             <div>
+                                <label for="export-mes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mês</label>
+                                <select id="export-mes" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                                    <!-- Options preenchidas por JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label for="export-ano" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ano</label>
+                                <select id="export-ano" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                                    <!-- Options preenchidas por JS -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <button id="btn-export-csv" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
+                            <i data-lucide="file-spreadsheet" class="h-5 w-5 mr-2"></i>
+                            Exportar Lançamentos (CSV)
+                        </button>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">A exportação de PDF não é suportada nesta versão.</p>
+                    </div>
+                </section>
+
+                <!-- Página: Configurações -->
+                <section id="page-configuracoes" class="page">
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Configurações</h2>
+                    
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md max-w-md mb-6">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Tema</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4">Escolha sua preferência visual.</p>
+                        <button id="theme-toggle-btn-config" class="w-full flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600">
+                            <!-- Ícone e texto atualizados por JS -->
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md max-w-md border-l-4 border-red-500">
+                        <h3 class="text-xl font-semibold mb-4 text-red-600 dark:text-red-400">Zona de Perigo</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4">Esta ação é irreversível. Todos os seus dados (lançamentos, categorias, contas, etc.) serão permanentemente apagados do seu navegador.</p>
+                        <button id="btn-limpar-dados" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
+                            <i data-lucide="trash-2" class="h-5 w-5 mr-2"></i>
+                            Limpar Todos os Dados
+                        </button>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal Genérico -->
+    <div id="modal-backdrop" class="modal-backdrop"></div>
+    <div id="modal" class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-11/12 md:max-w-lg">
+        <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
+            <h3 id="modal-title" class="text-xl font-semibold text-gray-900 dark:text-gray-100">Título do Modal</h3>
+            <button id="modal-close-btn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <i data-lucide="x" class="h-6 w-6"></i>
+            </button>
+        </div>
+        <div id="modal-body" class="p-6">
+            <!-- Conteúdo do formulário injetado por JS -->
+        </div>
+    </div>
+
+    <!-- Toast/Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-green-500 text-white py-3 px-6 rounded-lg shadow-lg opacity-0 translate-y-10 transition-all duration-300 ease-out z-50">
+        <span id="toast-message">Ação realizada com sucesso!</span>
+    </div>
+
+
+    <!-- ============================================= -->
+    <!-- SCRIPT DA APLICAÇÃO -->
+    <!-- ============================================= -->
+    <script type_ ="module">
+        // Espera o DOM carregar
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // =============================================
+            // INICIALIZAÇÃO E ÍCONES
+            // =============================================
+            
+            // Substitui todos os ícones data-lucide
+            lucide.createIcons();
+
+            // =============================================
+            // ESTADO DA APLICAÇÃO E LOCALSTORAGE
+            // =============================================
+            const DB_KEY = 'finAppDB';
+            
+            const initialState = {
+                salario: {
+                    valor: 0,
+                    dataPagamento: 1,
+                    // histórico: [] // Descomentar para implementar histórico
+                },
+                categorias: {
+                    receita: [
+                        { id: 'cat-r-1', nome: 'Salário' },
+                        { id: 'cat-r-2', nome: 'Freelance' },
+                    ],
+                    despesa: [
+                        { id: 'cat-d-1', nome: 'Alimentação' },
+                        { id: 'cat-d-2', nome: 'Transporte' },
+                        { id: 'cat-d-3', nome: 'Moradia' },
+                        { id: 'cat-d-4', nome: 'Lazer' },
+                        { id: 'cat-d-5', nome: 'Outros' },
+                    ]
+                },
+                cartoes: [
+                    { id: 'card-1', nome: 'Carteira (Dinheiro)', limite: 0, fechamento: null, vencimento: null },
+                ],
+                lancamentos: [],
+                investimentos: [],
+                settings: {
+                    theme: 'dark' // 'light' ou 'dark'
+                }
+            };
+
+            let state = JSON.parse(localStorage.getItem(DB_KEY)) || initialState;
+
+            function saveState() {
+                localStorage.setItem(DB_KEY, JSON.stringify(state));
+            }
+            
+            // =============================================
+            // SELETORES DE DOM
+            // =============================================
+            const pages = document.querySelectorAll('.page');
+            const navLinks = document.querySelectorAll('.nav-link');
+            const modal = document.getElementById('modal');
+            const modalBackdrop = document.getElementById('modal-backdrop');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+
+            // =============================================
+            // HELPERS
+            // =============================================
+            
+            // Gera um ID único simples
+            const uuid = () => `id-${new Date().getTime()}-${Math.random().toString(36).substr(2, 9)}`;
+            
+            // Formata número para Moeda (BRL)
+            const formatCurrency = (value) => {
+                if (typeof value !== 'number') value = 0;
+                return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            };
+
+            // Formata data YYYY-MM-DD para DD/MM/YYYY
+            const formatDate = (dateString) => {
+                if (!dateString) return 'N/A';
+                const [year, month, day] = dateString.split('-');
+                return `${day}/${month}/${year}`;
+            };
+            
+            // Retorna a data de hoje no formato YYYY-MM-DD
+            const getTodayDate = () => new Date().toISOString().split('T')[0];
+            
+            // Mostra notificação (toast)
+            function showToast(message, type = 'success') {
+                toastMessage.textContent = message;
+                
+                // Remove classes de cor antigas
+                toast.classList.remove('bg-green-500', 'bg-red-500', 'bg-yellow-500');
+                
+                if (type === 'success') {
+                    toast.classList.add('bg-green-500');
+                } else if (type === 'error') {
+                    toast.classList.add('bg-red-500');
+                } else if (type === 'warning') {
+                    toast.classList.add('bg-yellow-500');
+                }
+
+                toast.classList.remove('opacity-0', 'translate-y-10');
+                
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'translate-y-10');
+                }, 3000);
+            }
+
+            // =============================================
+            // NAVEGAÇÃO E MODAIS
+            // =============================================
+
+            // Controla a navegação entre páginas
+            function navigateTo(pageId) {
+                // Esconde todas as páginas
+                pages.forEach(page => page.classList.remove('active'));
+                
+                // Mostra a página alvo
+                const targetPage = document.getElementById(`page-${pageId}`);
+                if (targetPage) {
+                    targetPage.classList.add('active');
+                }
+
+                // Atualiza links da navegação
+                navLinks.forEach(link => {
+                    link.classList.remove('active', 'bg-gray-100', 'dark:bg-gray-700');
+                    if (link.dataset.page === pageId) {
+                        link.classList.add('active', 'bg-gray-100', 'dark:bg-gray-700');
+                    }
+                });
+
+                // Renderiza o conteúdo da página ativa
+                switch(pageId) {
+                    case 'dashboard': renderDashboard(); break;
+                    case 'lancamentos': renderLancamentos(); break;
+                    case 'salario': renderSalario(); break;
+                    case 'cartoes': renderCartoes(); break;
+                    case 'investimentos': renderInvestimentos(); break;
+                    case 'categorias': renderCategorias(); break;
+                    case 'relatorios': renderRelatorios(); break;
+                }
+                
+                // Fecha a sidebar no mobile ao navegar
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+            }
+
+            // Event Listeners da Navegação
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const pageId = e.currentTarget.dataset.page;
+                    navigateTo(pageId);
+                    window.location.hash = pageId; // Atualiza a URL
+                });
+            });
+
+            // Controla a navegação pela URL (hash)
+            function checkHash() {
+                const pageId = window.location.hash.replace('#', '') || 'dashboard';
+                navigateTo(pageId);
+            }
+
+            // Funções do Modal
+            function openModal(title, content) {
+                modalTitle.textContent = title;
+                modalBody.innerHTML = content;
+                modal.classList.add('active');
+                modalBackdrop.classList.add('active');
+                // Re-executa o Lucide para ícones dentro do modal
+                lucide.createIcons(); 
+            }
+
+            function closeModal() {
+                modal.classList.remove('active');
+                modalBackdrop.classList.remove('active');
+                modalBody.innerHTML = ''; // Limpa o conteúdo
+            }
+
+            modalCloseBtn.addEventListener('click', closeModal);
+            modalBackdrop.addEventListener('click', closeModal);
+
+            // =============================================
+            // TEMA (MODO CLARO/ESCURO)
+            // =============================================
+            const htmlEl = document.documentElement;
+            const themeToggleBtns = [
+                document.getElementById('theme-toggle-btn'), 
+                document.getElementById('theme-toggle-btn-config')
+            ];
+            const themeIconSun = document.getElementById('theme-icon-sun');
+            const themeIconMoon = document.getElementById('theme-icon-moon');
+            const themeText = document.getElementById('theme-text');
+
+            function updateThemeUI(theme) {
+                if (theme === 'dark') {
+                    htmlEl.classList.add('dark');
+                    themeIconSun?.classList.add('hidden');
+                    themeIconMoon?.classList.remove('hidden');
+                    themeText?.textContent = 'Modo Escuro';
+                    
+                    themeToggleBtns[1].innerHTML = `
+                        <i data-lucide="moon" class="h-5 w-5 mr-2"></i>
+                        <span>Alternar para Modo Claro</span>
+                    `;
+                } else {
+                    htmlEl.classList.remove('dark');
+                    themeIconSun?.classList.remove('hidden');
+                    themeIconMoon?.classList.add('hidden');
+                    themeText?.textContent = 'Modo Claro';
+                    
+                    themeToggleBtns[1].innerHTML = `
+                        <i data-lucide="sun" class="h-5 w-5 mr-2"></i>
+                        <span>Alternar para Modo Escuro</span>
+                    `;
+                }
+                // Recria ícones do Lucide no botão de config
+                lucide.createIcons({
+                    nodes: [themeToggleBtns[1]]
+                });
+
+                // Atualiza gráficos para o novo tema
+                if(window.location.hash.includes('dashboard') || window.location.hash === '') {
+                    renderDashboard();
+                }
+                if(window.location.hash.includes('investimentos')) {
+                    renderInvestimentos();
+                }
+            }
+
+            function toggleTheme() {
+                state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark';
+                updateThemeUI(state.settings.theme);
+                saveState();
+            }
+
+            themeToggleBtns.forEach(btn => btn.addEventListener('click', toggleTheme));
+
+            // =============================================
+            // MÓDULO: SALÁRIO E ORÇAMENTO
+            // =============================================
+            const formSalario = document.getElementById('form-salario');
+            const inputSalarioValor = document.getElementById('salario-valor');
+            const inputSalarioData = document.getElementById('salario-data-pagamento');
+            
+            function renderSalario() {
+                inputSalarioValor.value = state.salario.valor > 0 ? state.salario.valor : '';
+                inputSalarioData.value = state.salario.dataPagamento || 1;
+            }
+
+            formSalario.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const valor = parseFloat(inputSalarioValor.value) || 0;
+                const data = parseInt(inputSalarioData.value) || 1;
+                
+                state.salario.valor = valor;
+                state.salario.dataPagamento = data;
+                saveState();
+                
+                showToast('Orçamento salvo com sucesso!');
+                renderDashboard(); // Atualiza o dashboard
+            });
+            
+            // =============================================
+            // MÓDULO: CATEGORIAS
+            // =============================================
+            
+            function renderCategorias() {
+                const listReceita = document.getElementById('categorias-list-receita');
+                const listDespesa = document.getElementById('categorias-list-despesa');
+                const emptyReceita = document.getElementById('categorias-empty-receita');
+                const emptyDespesa = document.getElementById('categorias-empty-despesa');
+
+                listReceita.innerHTML = '';
+                listDespesa.innerHTML = '';
+                
+                if (state.categorias.receita.length === 0) {
+                    listReceita.appendChild(emptyReceita);
+                } else {
+                    state.categorias.receita.forEach(cat => {
+                        listReceita.innerHTML += `
+                            <li class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <span class="font-medium">${cat.nome}</span>
+                                <button class="btn-delete-categoria text-red-500 hover:text-red-700" data-id="${cat.id}" data-tipo="receita">
+                                    <i data-lucide="trash-2" class="h-5 w-5"></i>
+                                </button>
+                            </li>
+                        `;
+                    });
+                }
+                
+                if (state.categorias.despesa.length === 0) {
+                    listDespesa.appendChild(emptyDespesa);
+                } else {
+                    state.categorias.despesa.forEach(cat => {
+                        listDespesa.innerHTML += `
+                            <li class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <span class="font-medium">${cat.nome}</span>
+                                <button class="btn-delete-categoria text-red-500 hover:text-red-700" data-id="${cat.id}" data-tipo="despesa">
+                                    <i data-lucide="trash-2" class="h-5 w-5"></i>
+                                </button>
+                            </li>
+                        `;
+                    });
+                }
+
+                lucide.createIcons(); // Recria ícones
+            }
+            
+            // Abrir modal de nova categoria
+            document.getElementById('btn-nova-categoria').addEventListener('click', () => {
+                const formHtml = `
+                    <form id="form-modal-categoria">
+                        <div class="mb-4">
+                            <label for="categoria-nome" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome da Categoria</label>
+                            <input type="text" id="categoria-nome" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                        </div>
+                        <div class="mb-6">
+                            <label for="categoria-tipo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                            <select id="categoria-tipo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                <option value="despesa">Despesa</option>
+                                <option value="receita">Receita</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Salvar Categoria</button>
+                    </form>
+                `;
+                openModal('Nova Categoria', formHtml);
+            });
+
+            // Salvar (Adicionar) Categoria
+            modalBody.addEventListener('submit', (e) => {
+                if (e.target.id === 'form-modal-categoria') {
+                    e.preventDefault();
+                    const nome = document.getElementById('categoria-nome').value;
+                    const tipo = document.getElementById('categoria-tipo').value;
+
+                    if (!nome) {
+                        showToast('O nome da categoria é obrigatório.', 'error');
+                        return;
+                    }
+
+                    const novaCategoria = {
+                        id: uuid(),
+                        nome: nome
+                    };
+
+                    state.categorias[tipo].push(novaCategoria);
+                    saveState();
+                    renderCategorias();
+                    closeModal();
+                    showToast('Categoria adicionada com sucesso!');
+                }
+            });
+            
+            // Deletar Categoria
+            document.getElementById('page-categorias').addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-delete-categoria');
+                if (btn) {
+                    const id = btn.dataset.id;
+                    const tipo = btn.dataset.tipo;
+                    
+                    // Verifica se a categoria está em uso
+                    const emUso = state.lancamentos.some(l => l.categoriaId === id);
+                    if (emUso) {
+                        showToast('Não é possível excluir. Categoria está sendo usada em lançamentos.', 'error');
+                        return;
+                    }
+                    
+                    if (confirm('Tem certeza que deseja excluir esta categoria?')) {
+                        state.categorias[tipo] = state.categorias[tipo].filter(cat => cat.id !== id);
+                        saveState();
+                        renderCategorias();
+                        showToast('Categoria excluída.');
+                    }
+                }
+            });
+
+            // Helper para popular selects de categoria
+            function getCategoriaOptions(tipo = 'despesa') {
+                return state.categorias[tipo]
+                    .map(cat => `<option value="${cat.id}">${cat.nome}</option>`)
+                    .join('');
+            }
+            function getAllCategoriaOptions() {
+                 return `
+                    <optgroup label="Despesas">
+                        ${getCategoriaOptions('despesa')}
+                    </optgroup>
+                    <optgroup label="Receitas">
+                        ${getCategoriaOptions('receita')}
+                    </optgroup>
+                 `;
+            }
+
+            // =============================================
+            // MÓDULO: CARTÕES / CONTAS
+            // =============================================
+            
+            function renderCartoes() {
+                const list = document.getElementById('cartoes-list');
+                const emptyMsg = document.getElementById('cartoes-empty-msg');
+                list.innerHTML = '';
+                
+                if (state.cartoes.length === 0) {
+                    list.appendChild(emptyMsg);
+                } else {
+                    state.cartoes.forEach(cartao => {
+                        // Calcula gastos no cartão (fatura atual, simplificado)
+                        const gastos = state.lancamentos
+                            .filter(l => l.cartaoId === cartao.id && l.tipo === 'despesa' && new Date(l.data).getMonth() === new Date().getMonth())
+                            .reduce((acc, l) => acc + l.valor, 0);
+
+                        const cardHtml = `
+                            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md relative">
+                                <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">${cartao.nome}</h3>
+                                ${cartao.limite > 0 ? `
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Limite: ${formatCurrency(cartao.limite)}</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Gastos (Mês): ${formatCurrency(gastos)}</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Fechamento: Dia ${cartao.fechamento || 'N/A'}</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Vencimento: Dia ${cartao.vencimento || 'N/A'}</p>
+                                ` : `
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Conta Corrente / Carteira</p>
+                                `}
+                                <button class="btn-delete-cartao absolute top-4 right-4 text-red-500 hover:text-red-700" data-id="${cartao.id}">
+                                    <i data-lucide="trash-2" class="h-5 w-5"></i>
+                                </button>
+                            </div>
+                        `;
+                        list.innerHTML += cardHtml;
+                    });
+                }
+                lucide.createIcons();
+            }
+            
+            // Abrir modal de novo cartão
+            document.getElementById('btn-novo-cartao').addEventListener('click', () => {
+                const formHtml = `
+                    <form id="form-modal-cartao">
+                        <div class="mb-4">
+                            <label for="cartao-nome" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome da Conta / Cartão</label>
+                            <input type="text" id="cartao-nome" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required placeholder="Ex: Nubank, Carteira">
+                        </div>
+                        <div class="mb-4">
+                            <label for="cartao-limite" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Limite (Deixe 0 para conta/carteira)</label>
+                            <input type="number" step="0.01" id="cartao-limite" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="0">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label for="cartao-fechamento" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Dia Fechamento</label>
+                                <input type="number" id="cartao-fechamento" min="1" max="31" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            </div>
+                            <div>
+                                <label for="cartao-vencimento" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Dia Vencimento</label>
+                                <input type="number" id="cartao-vencimento" min="1" max="31" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Salvar Conta/Cartão</button>
+                    </form>
+                `;
+                openModal('Nova Conta ou Cartão', formHtml);
+            });
+            
+            // Salvar (Adicionar) Cartão
+            modalBody.addEventListener('submit', (e) => {
+                if (e.target.id === 'form-modal-cartao') {
+                    e.preventDefault();
+                    const nome = document.getElementById('cartao-nome').value;
+                    if (!nome) {
+                        showToast('O nome é obrigatório.', 'error');
+                        return;
+                    }
+
+                    const novoCartao = {
+                        id: uuid(),
+                        nome: nome,
+                        limite: parseFloat(document.getElementById('cartao-limite').value) || 0,
+                        fechamento: parseInt(document.getElementById('cartao-fechamento').value) || null,
+                        vencimento: parseInt(document.getElementById('cartao-vencimento').value) || null,
+                    };
+
+                    state.cartoes.push(novoCartao);
+                    saveState();
+                    renderCartoes();
+                    closeModal();
+                    showToast('Conta/Cartão adicionado com sucesso!');
+                }
+            });
+            
+            // Deletar Cartão
+            document.getElementById('page-cartoes').addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-delete-cartao');
+                if (btn) {
+                    const id = btn.dataset.id;
+                    
+                    const emUso = state.lancamentos.some(l => l.cartaoId === id);
+                    if (emUso) {
+                        showToast('Não é possível excluir. Conta/Cartão está sendo usado em lançamentos.', 'error');
+                        return;
+                    }
+                    
+                    if (confirm('Tem certeza que deseja excluir esta conta/cartão?')) {
+                        state.cartoes = state.cartoes.filter(c => c.id !== id);
+                        saveState();
+                        renderCartoes();
+                        showToast('Conta/Cartão excluído.');
+                    }
+                }
+            });
+
+            // Helper para popular selects de cartão
+            function getCartaoOptions() {
+                return state.cartoes
+                    .map(cartao => `<option value="${cartao.id}">${cartao.nome}</option>`)
+                    .join('');
+            }
+            
+            // =============================================
+            // MÓDULO: LANÇAMENTOS (CRUD)
+            // =============================================
+            
+            let currentFiltroMes = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+            let currentFiltroTipo = 'todos';
+            let currentFiltroCategoria = 'todas';
+
+            // Popula os filtros de mês e ano
+            function setupLancamentoFiltros() {
+                const filterMes = document.getElementById('filter-mes');
+                const filterCategoria = document.getElementById('filter-categoria');
+                
+                // --- Filtro de Mês ---
+                // Pega todos os meses/anos únicos dos lançamentos
+                const mesesUnicos = [...new Set(state.lancamentos.map(l => l.data.substring(0, 7)))];
+                const mesAtual = new Date().toISOString().substring(0, 7);
+                if (!mesesUnicos.includes(mesAtual)) {
+                    mesesUnicos.push(mesAtual);
+                }
+                mesesUnicos.sort().reverse();
+
+                filterMes.innerHTML = mesesUnicos.map(mesAno => {
+                    const [ano, mes] = mesAno.split('-');
+                    const nomeMes = new Date(ano, mes - 1).toLocaleString('pt-BR', { month: 'long' });
+                    const display = `${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)} de ${ano}`;
+                    return `<option value="${mesAno}" ${mesAno === currentFiltroMes ? 'selected' : ''}>${display}</option>`;
+                }).join('');
+                
+                // --- Filtro de Categoria ---
+                filterCategoria.innerHTML = '<option value="todas">Todas as Categorias</option>' + getAllCategoriaOptions();
+                
+                // Seta os valores dos filtros
+                filterMes.value = currentFiltroMes;
+                document.getElementById('filter-tipo').value = currentFiltroTipo;
+                filterCategoria.value = currentFiltroCategoria;
+            }
+
+            // Filtros change listeners
+            document.getElementById('filter-mes').addEventListener('change', (e) => {
+                currentFiltroMes = e.target.value;
+                renderLancamentos();
+            });
+            document.getElementById('filter-tipo').addEventListener('change', (e) => {
+                currentFiltroTipo = e.target.value;
+                renderLancamentos();
+            });
+            document.getElementById('filter-categoria').addEventListener('change', (e) => {
+                currentFiltroCategoria = e.target.value;
+                renderLancamentos();
+            });
+            
+
+            function getLancamentosFiltrados() {
+                return state.lancamentos
+                    .filter(l => l.data.startsWith(currentFiltroMes))
+                    .filter(l => currentFiltroTipo === 'todos' || l.tipo === currentFiltroTipo)
+                    .filter(l => currentFiltroCategoria === 'todas' || l.categoriaId === currentFiltroCategoria)
+                    .sort((a, b) => new Date(b.data) - new Date(a.data)); // Mais recentes primeiro
+            }
+
+            function renderLancamentos() {
+                setupLancamentoFiltros();
+                const tableBody = document.getElementById('lancamentos-table-body');
+                const emptyRow = document.getElementById('lancamentos-empty-row');
+                tableBody.innerHTML = '';
+                
+                const lancamentosFiltrados = getLancamentosFiltrados();
+
+                if (lancamentosFiltrados.length === 0) {
+                    tableBody.appendChild(emptyRow);
+                } else {
+                    lancamentosFiltrados.forEach(l => {
+                        const categoria = state.categorias[l.tipo]?.find(c => c.id === l.categoriaId);
+                        const cartao = state.cartoes.find(c => c.id === l.cartaoId);
+                        const valorClasse = l.tipo === 'receita' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                        const valorSinal = l.tipo === 'receita' ? '+' : '-';
+
+                        const rowHtml = `
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatDate(l.data)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">${l.descricao}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${categoria?.nome || 'N/A'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${valorClasse}">${valorSinal} ${formatCurrency(l.valor)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${cartao?.nome || 'N/A'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                    <button class="btn-edit-lancamento text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300" data-id="${l.id}">
+                                        <i data-lucide="edit-2" class="h-5 w-5"></i>
+                                    </button>
+                                    <button class="btn-delete-lancamento text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" data-id="${l.id}">
+                                        <i data-lucide="trash-2" class="h-5 w-5"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        tableBody.innerHTML += rowHtml;
+                    });
+                }
+                lucide.createIcons();
+            }
+
+            // Formulário de Lançamento (HTML)
+            function getLancamentoFormHtml(lancamento = {}) {
+                const isEdit = !!lancamento.id;
+                const tipo = lancamento.tipo || 'despesa';
+                
+                return `
+                    <form id="form-modal-lancamento" data-id="${isEdit ? lancamento.id : ''}">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo</label>
+                            <div class="flex gap-4">
+                                <label class="flex-1">
+                                    <input type="radio" name="lancamento-tipo" value="despesa" class="sr-only peer" ${tipo === 'despesa' ? 'checked' : ''}>
+                                    <div class="w-full p-3 text-center rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer peer-checked:border-red-500 peer-checked:bg-red-50 dark:peer-checked:bg-red-900 peer-checked:text-red-600 dark:peer-checked:text-red-300">
+                                        <i data-lucide="arrow-down-circle" class="h-5 w-5 inline-block mr-2"></i>
+                                        Despesa
+                                    </div>
+                                </label>
+                                <label class="flex-1">
+                                    <input type="radio" name="lancamento-tipo" value="receita" class="sr-only peer" ${tipo === 'receita' ? 'checked' : ''}>
+                                    <div class="w-full p-3 text-center rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer peer-checked:border-green-500 peer-checked:bg-green-50 dark:peer-checked:bg-green-900 peer-checked:text-green-600 dark:peer-checked:text-green-300">
+                                        <i data-lucide="arrow-up-circle" class="h-5 w-5 inline-block mr-2"></i>
+                                        Receita
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="lancamento-descricao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
+                            <input type="text" id="lancamento-descricao" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="${lancamento.descricao || ''}" required>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                             <div>
+                                <label for="lancamento-valor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 dark:text-gray-400">R$</span>
+                                    <input type="number" step="0.01" id="lancamento-valor" class="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="${lancamento.valor || ''}" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="lancamento-data" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data</label>
+                                <input type="date" id="lancamento-data" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="${lancamento.data || getTodayDate()}" required>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label for="lancamento-categoria" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria</label>
+                                <select id="lancamento-categoria" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                                    ${getCategoriaOptions(tipo)}
+                                </select>
+                            </div>
+                             <div>
+                                <label for="lancamento-cartao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Conta / Cartão</label>
+                                <select id="lancamento-cartao" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                                    ${getCartaoOptions()}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">${isEdit ? 'Atualizar' : 'Salvar'} Lançamento</button>
+                    </form>
+                `;
+            }
+            
+            // Atualiza o select de categoria quando o tipo (receita/despesa) muda
+            modalBody.addEventListener('change', (e) => {
+                if (e.target.name === 'lancamento-tipo') {
+                    const tipo = e.target.value;
+                    const selectCategoria = document.getElementById('lancamento-categoria');
+                    selectCategoria.innerHTML = getCategoriaOptions(tipo);
+                }
+            });
+            
+            // Abrir modal de NOVO Lançamento
+            document.getElementById('btn-novo-lancamento').addEventListener('click', () => {
+                const formHtml = getLancamentoFormHtml();
+                openModal('Novo Lançamento', formHtml);
+                // Seta valores padrão
+                document.getElementById('lancamento-categoria').value = state.categorias.despesa[0]?.id || '';
+                document.getElementById('lancamento-cartao').value = state.cartoes[0]?.id || '';
+            });
+
+            // Abrir modal de EDITAR Lançamento
+            document.getElementById('page-lancamentos').addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-edit-lancamento');
+                if (btn) {
+                    const id = btn.dataset.id;
+                    const lancamento = state.lancamentos.find(l => l.id === id);
+                    if (lancamento) {
+                        const formHtml = getLancamentoFormHtml(lancamento);
+                        openModal('Editar Lançamento', formHtml);
+                        // Seta valores salvos
+                        document.getElementById('lancamento-categoria').value = lancamento.categoriaId;
+                        document.getElementById('lancamento-cartao').value = lancamento.cartaoId;
+                    }
+                }
+            });
+
+            // Salvar (Adicionar ou Editar) Lançamento
+            modalBody.addEventListener('submit', (e) => {
+                if (e.target.id === 'form-modal-lancamento') {
+                    e.preventDefault();
+                    const form = e.target;
+                    const id = form.dataset.id;
+                    
+                    const lancamentoData = {
+                        id: id || uuid(),
+                        tipo: form.querySelector('input[name="lancamento-tipo"]:checked').value,
+                        descricao: document.getElementById('lancamento-descricao').value,
+                        valor: parseFloat(document.getElementById('lancamento-valor').value),
+                        data: document.getElementById('lancamento-data').value,
+                        categoriaId: document.getElementById('lancamento-categoria').value,
+                        cartaoId: document.getElementById('lancamento-cartao').value
+                    };
+
+                    if (!lancamentoData.descricao || !lancamentoData.valor || !lancamentoData.data || !lancamentoData.categoriaId || !lancamentoData.cartaoId) {
+                        showToast('Por favor, preencha todos os campos.', 'error');
+                        return;
+                    }
+
+                    if (id) {
+                        // Editar
+                        state.lancamentos = state.lancamentos.map(l => l.id === id ? lancamentoData : l);
+                        showToast('Lançamento atualizado!');
+                    } else {
+                        // Adicionar
+                        state.lancamentos.push(lancamentoData);
+                        showToast('Lançamento adicionado!');
+                    }
+                    
+                    saveState();
+                    renderLancamentos();
+                    renderDashboard(); // Atualiza métricas
+                    closeModal();
+                }
+            });
+            
+            // Deletar Lançamento
+            document.getElementById('page-lancamentos').addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-delete-lancamento');
+                if (btn) {
+                    const id = btn.dataset.id;
+                    if (confirm('Tem certeza que deseja excluir este lançamento?')) {
+                        state.lancamentos = state.lancamentos.filter(l => l.id !== id);
+                        saveState();
+                        renderLancamentos();
+                        renderDashboard(); // Atualiza métricas
+                        showToast('Lançamento excluído.');
+                    }
+                }
+            });
+
+            // =============================================
+            // MÓDULO: INVESTIMENTOS
+            // =============================================
+            
+            // Armazena a instância do gráfico
+            let chartInvestimentosTotal = null;
+
+            // Calcula projeção de juros compostos
+            function calcularProjecaoInvestimento(principal, taxaAnual, anos, aportes = 0) {
+                const taxaMensal = Math.pow(1 + (taxaAnual / 100), 1/12) - 1;
+                const meses = anos * 12;
+                let valores = [];
+                let valorAtual = principal;
+
+                for (let i = 0; i <= meses; i++) {
+                    valores.push({
+                        mes: i,
+                        valor: valorAtual
+                    });
+                    valorAtual = (valorAtual * (1 + taxaMensal)) + aportes; // Simplificado: aportes mensais
+                }
+                return valores;
+            }
+
+            function renderInvestimentos() {
+                const list = document.getElementById('investimentos-list');
+                const emptyMsg = document.getElementById('investimentos-empty-msg');
+                list.innerHTML = '';
+                
+                if (state.investimentos.length === 0) {
+                    list.innerHTML = emptyMsg.outerHTML;
+                    // Limpa o gráfico
+                    if (chartInvestimentosTotal) {
+                        chartInvestimentosTotal.destroy();
+                        chartInvestimentosTotal = null;
+                    }
+                    document.getElementById('chart-investimentos-total').innerHTML = '<p class="flex items-center justify-center h-full text-gray-500">Adicione um investimento para ver a projeção.</p>';
+                    return;
+                }
+                
+                let projecaoTotalData = [];
+                const anosMax = 20; // Projeção máxima de 20 anos
+                
+                state.investimentos.forEach(inv => {
+                    const projecao = calcularProjecaoInvestimento(inv.valorInicial, inv.taxaAnual, anosMax); // Usando 20 anos como padrão para o gráfico total
+                    
+                    projecao.forEach((p, index) => {
+                        if (projecaoTotalData[index]) {
+                            projecaoTotalData[index] += p.valor;
+                        } else {
+                            projecaoTotalData[index] = p.valor;
+                        }
+                    });
+
+                    // Renderiza o card individual
+                    const valorFinal = projecao.find(p => p.mes === inv.prazoAnos * 12)?.valor || inv.valorInicial;
+                    
+                    const cardHtml = `
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="text-xl font-semibold text-gray-900 dark:text-gray-100">${inv.tipo}</h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Inicial: ${formatCurrency(inv.valorInicial)}</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Taxa: ${inv.taxaAnual}% a.a. | Prazo: ${inv.prazoAnos} anos</p>
+                                </div>
+                                <button class="btn-delete-investimento text-red-500 hover:text-red-700" data-id="${inv.id}">
+                                    <i data-lucide="trash-2" class="h-5 w-5"></i>
+                                </button>
+                            </div>
+                            <div class="mt-4">
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Valor Projetado (em ${inv.prazoAnos} anos):</p>
+                                <p class="text-2xl font-bold text-green-600 dark:text-green-400">${formatCurrency(valorFinal)}</p>
+                            </div>
+                        </div>
+                    `;
+                    list.innerHTML += cardHtml;
+                });
+
+                // Renderiza o gráfico total
+                const ctx = document.getElementById('chart-investimentos-total').getContext('2d');
+                const labels = projecaoTotalData.map((_, i) => `Ano ${Math.floor(i / 12)}`); // Simplificado
+
+                if (chartInvestimentosTotal) {
+                    chartInvestimentosTotal.destroy();
+                }
+
+                const isDark = state.settings.theme === 'dark';
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const labelColor = isDark ? '#e5e7eb' : '#374151';
+
+                chartInvestimentosTotal = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: projecaoTotalData.map((_, i) => i), // Meses
+                        datasets: [{
+                            label: 'Patrimônio Total Projetado',
+                            data: projecaoTotalData,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            fill: true,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Meses', color: labelColor },
+                                ticks: { color: labelColor },
+                                grid: { color: gridColor }
+                            },
+                            y: {
+                                title: { display: true, text: 'Valor (R$)', color: labelColor },
+                                ticks: { 
+                                    color: labelColor,
+                                    callback: (value) => formatCurrency(value)
+                                },
+                                grid: { color: gridColor }
+                            }
+                        },
+                        plugins: {
+                            legend: { labels: { color: labelColor } },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `Patrimônio: ${formatCurrency(context.parsed.y)}`
+                                }
+                            }
+                        }
+                    }
+                });
+
+                lucide.createIcons();
+            }
+
+            // Abrir modal de novo investimento
+            document.getElementById('btn-novo-investimento').addEventListener('click', () => {
+                const formHtml = `
+                    <form id="form-modal-investimento">
+                        <div class="mb-4">
+                            <label for="invest-tipo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo/Nome do Investimento</label>
+                            <input type="text" id="invest-tipo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required placeholder="Ex: CDB Banco X, Tesouro Selic">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="invest-valor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Inicial</label>
+                                <input type="number" step="0.01" id="invest-valor" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                            </div>
+                            <div>
+                                <label for="invest-taxa" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Taxa Retorno (% Anual)</label>
+                                <input type="number" step="0.1" id="invest-taxa" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required placeholder="Ex: 10.5">
+                            </div>
+                        </div>
+                         <div class="mb-6">
+                            <label for="invest-prazo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prazo (Anos)</label>
+                            <input type="number" id="invest-prazo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required placeholder="5">
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Salvar Investimento</button>
+                    </form>
+                `;
+                openModal('Novo Investimento', formHtml);
+            });
+
+            // Salvar (Adicionar) Investimento
+            modalBody.addEventListener('submit', (e) => {
+                if (e.target.id === 'form-modal-investimento') {
+                    e.preventDefault();
+                    
+                    const novoInvestimento = {
+                        id: uuid(),
+                        tipo: document.getElementById('invest-tipo').value,
+                        valorInicial: parseFloat(document.getElementById('invest-valor').value),
+                        taxaAnual: parseFloat(document.getElementById('invest-taxa').value),
+                        prazoAnos: parseInt(document.getElementById('invest-prazo').value),
+                    };
+
+                    if (!novoInvestimento.tipo || !novoInvestimento.valorInicial || !novoInvestimento.taxaAnual || !novoInvestimento.prazoAnos) {
+                        showToast('Por favor, preencha todos os campos.', 'error');
+                        return;
+                    }
+
+                    state.investimentos.push(novoInvestimento);
+                    saveState();
+                    renderInvestimentos();
+                    closeModal();
+                    showToast('Investimento adicionado com sucesso!');
+                }
+            });
+            
+            // Deletar Investimento
+            document.getElementById('page-investimentos').addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-delete-investimento');
+                if (btn) {
+                    const id = btn.dataset.id;
+                    if (confirm('Tem certeza que deseja excluir este investimento?')) {
+                        state.investimentos = state.investimentos.filter(inv => inv.id !== id);
+                        saveState();
+                        renderInvestimentos();
+                        showToast('Investimento excluído.');
+                    }
+                }
+            });
+
+            // =============================================
+            // MÓDULO: RELATÓRIOS (Exportar CSV)
+            // =============================================
+            
+            function renderRelatorios() {
+                const selectMes = document.getElementById('export-mes');
+                const selectAno = document.getElementById('export-ano');
+                
+                const datas = state.lancamentos.map(l => l.data);
+                const anosUnicos = [...new Set(datas.map(d => d.substring(0, 4)))].sort().reverse();
+                const anoAtual = new Date().getFullYear().toString();
+                if (!anosUnicos.includes(anoAtual)) anosUnicos.push(anoAtual);
+                
+                selectAno.innerHTML = anosUnicos.map(ano => `<option value="${ano}" ${ano === anoAtual ? 'selected' : ''}>${ano}</option>`).join('');
+
+                const meses = [
+                    { v: '01', n: 'Janeiro' }, { v: '02', n: 'Fevereiro' }, { v: '03', n: 'Março' },
+                    { v: '04', n: 'Abril' }, { v: '05', n: 'Maio' }, { v: '06', n: 'Junho' },
+                    { v: '07', n: 'Julho' }, { v: '08', n: 'Agosto' }, { v: '09', n: 'Setembro' },
+                    { v: '10', n: 'Outubro' }, { v: '11', n: 'Novembro' }, { v: '12', n: 'Dezembro' }
+                ];
+                const mesAtual = String(new Date().getMonth() + 1).padStart(2, '0');
+                
+                selectMes.innerHTML = meses.map(mes => `<option value="${mes.v}" ${mes.v === mesAtual ? 'selected' : ''}>${mes.n}</option>`).join('');
+                selectMes.innerHTML += `<option value="todos">Ano Inteiro</option>`;
+            }
+
+            document.getElementById('btn-export-csv').addEventListener('click', () => {
+                const mes = document.getElementById('export-mes').value;
+                const ano = document.getElementById('export-ano').value;
+                
+                const filtroMesAno = mes === 'todos' ? ano : `${ano}-${mes}`;
+                
+                const dados = state.lancamentos
+                    .filter(l => l.data.startsWith(filtroMesAno))
+                    .map(l => {
+                        const categoria = state.categorias[l.tipo]?.find(c => c.id === l.categoriaId)?.nome || 'N/A';
+                        const cartao = state.cartoes.find(c => c.id === l.cartaoId)?.nome || 'N/A';
+                        return {
+                            Data: l.data,
+                            Tipo: l.tipo,
+                            Descricao: l.descricao,
+                            Categoria: categoria,
+                            Conta: cartao,
+                            Valor: l.valor
+                        };
+                    });
+                
+                if (dados.length === 0) {
+                    showToast('Nenhum dado encontrado para este período.', 'warning');
+                    return;
+                }
+
+                const csv = Papa.unparse(dados);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `finapp_export_${filtroMesAno}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showToast('Relatório CSV gerado!');
+            });
+
+            // =============================================
+            // MÓDULO: CONFIGURAÇÕES
+            // =============================================
+            
+            document.getElementById('btn-limpar-dados').addEventListener('click', () => {
+                if (confirm('ATENÇÃO! Esta ação é IRREVERSÍVEL.\n\nTem certeza que deseja apagar TODOS os seus dados?')) {
+                    localStorage.removeItem(DB_KEY);
+                    state = initialState; // Reseta o estado
+                    // Recarrega a aplicação
+                    window.location.hash = 'dashboard';
+                    window.location.reload();
+                }
+            });
+            
+            // =============================================
+            // MÓDULO: DASHBOARD (CÁLCULOS E GRÁFICOS)
+            // =============================================
+            
+            // Instâncias dos gráficos
+            let chartCategoria = null;
+            let chartEvolucao = null;
+            let chartComparativo = null;
+
+            function getDadosMesAtual() {
+                const hoje = new Date();
+                const mesAtual = hoje.getMonth();
+                const anoAtual = hoje.getFullYear();
+
+                const lancamentosMes = state.lancamentos.filter(l => {
+                    const data = new Date(l.data + 'T00:00:00'); // Corrige fuso
+                    return data.getMonth() === mesAtual && data.getFullYear() === anoAtual;
+                });
+                
+                const despesas = lancamentosMes
+                    .filter(l => l.tipo === 'despesa')
+                    .reduce((acc, l) => acc + l.valor, 0);
+                    
+                const receitas = lancamentosMes
+                    .filter(l => l.tipo === 'receita')
+                    .reduce((acc, l) => acc + l.valor, 0);
+                
+                return { lancamentosMes, despesas, receitas };
+            }
+
+            function renderDashboard() {
+                // --- 1. Cálculos ---
+                const hoje = new Date();
+                const diaAtual = hoje.getDate();
+                const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+                
+                const { lancamentosMes, despesas, receitas } = getDadosMesAtual();
+                const orcamento = state.salario.valor;
+                const saldoOrcamento = orcamento - despesas;
+                const balancoReal = receitas - despesas;
+                
+                const percentualGasto = orcamento > 0 ? (despesas / orcamento) * 100 : 0;
+                
+                const gastoDiario = despesas / diaAtual;
+                
+                // Previsão
+                const previsaoGastoTotal = gastoDiario * diasNoMes;
+                const previsaoSaldoFinal = receitas - previsaoGastoTotal;
+
+                // --- 2. Atualizar Métricas (DOM) ---
+                document.getElementById('metric-salario').textContent = formatCurrency(orcamento);
+                document.getElementById('metric-despesas').textContent = formatCurrency(despesas);
+                document.getElementById('metric-saldo').textContent = formatCurrency(saldoOrcamento);
+                document.getElementById('metric-balanco').textContent = formatCurrency(balancoReal);
+                
+                // Alertas visuais
+                document.getElementById('metric-saldo').classList.toggle('text-red-500', saldoOrcamento < 0);
+                document.getElementById('metric-balanco').classList.toggle('text-red-500', balancoReal < 0);
+                document.getElementById('metric-balanco').classList.toggle('text-green-500', balancoReal > 0);
+                
+                document.getElementById('metric-percentual-gasto').textContent = `${percentualGasto.toFixed(0)}%`;
+                const bar = document.getElementById('metric-percentual-gasto-bar');
+                bar.style.width = `${Math.min(percentualGasto, 100)}%`;
+                bar.classList.toggle('bg-red-500', percentualGasto > 85);
+                bar.classList.toggle('bg-yellow-500', percentualGasto > 60 && percentualGasto <= 85);
+                bar.classList.toggle('bg-indigo-600', percentualGasto <= 60);
+
+                document.getElementById('metric-gasto-diario').textContent = formatCurrency(gastoDiario);
+                document.getElementById('metric-previsao-saldo').textContent = formatCurrency(previsaoSaldoFinal);
+                document.getElementById('metric-previsao-saldo').classList.toggle('text-red-500', previsaoSaldoFinal < 0);
+
+                // --- 3. Renderizar Gráficos ---
+                const isDark = state.settings.theme === 'dark';
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                const labelColor = isDark ? '#e5e7eb' : '#374151';
+                const legendColor = isDark ? '#d1d5db' : '#4b5563';
+
+                // Gráfico 1: Gastos por Categoria (Pizza/Doughnut)
+                const gastosPorCategoria = state.categorias.despesa.map(cat => {
+                    const total = lancamentosMes
+                        .filter(l => l.tipo === 'despesa' && l.categoriaId === cat.id)
+                        .reduce((acc, l) => acc + l.valor, 0);
+                    return { nome: cat.nome, total: total };
+                }).filter(c => c.total > 0); // Só mostra categorias com gastos
+
+                const ctxCat = document.getElementById('chart-gastos-categoria').getContext('2d');
+                if (chartCategoria) chartCategoria.destroy();
+                chartCategoria = new Chart(ctxCat, {
+                    type: 'doughnut',
+                    data: {
+                        labels: gastosPorCategoria.map(c => c.nome),
+                        datasets: [{
+                            data: gastosPorCategoria.map(c => c.total),
+                            backgroundColor: [
+                                '#4F46E5', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#8B5CF6',
+                                '#D946EF', '#06B6D4', '#65A30D'
+                            ],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                position: 'bottom',
+                                labels: { color: legendColor }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        const percent = total > 0 ? (value / total * 100).toFixed(1) : 0;
+                                        return `${label}: ${formatCurrency(value)} (${percent}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Gráfico 2: Evolução do Saldo (Linha)
+                // (Balanço acumulado nos últimos 30 dias)
+                const labels30dias = [];
+                const data30dias = [];
+                let saldoAcumulado = 0; // Vamos simplificar: balanço do dia
+                
+                for (let i = 29; i >= 0; i--) {
+                    const dia = new Date();
+                    dia.setDate(hoje.getDate() - i);
+                    const diaStr = dia.toISOString().split('T')[0];
+                    labels30dias.push(dia); // Usando objeto Date para o adapter
+
+                    const receitasDia = state.lancamentos
+                        .filter(l => l.data === diaStr && l.tipo === 'receita')
+                        .reduce((acc, l) => acc + l.valor, 0);
+                    
+                    const despesasDia = state.lancamentos
+                        .filter(l => l.data === diaStr && l.tipo === 'despesa')
+                        .reduce((acc, l) => acc + l.valor, 0);
+                    
+                    saldoAcumulado += (receitasDia - despesasDia);
+                    data30dias.push(saldoAcumulado);
+                }
+                
+                const ctxEvol = document.getElementById('chart-evolucao-saldo').getContext('2d');
+                if (chartEvolucao) chartEvolucao.destroy();
+                chartEvolucao = new Chart(ctxEvol, {
+                    type: 'line',
+                    data: {
+                        labels: labels30dias,
+                        datasets: [{
+                            label: 'Balanço Acumulado',
+                            data: data30dias,
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: { unit: 'day', tooltipFormat: 'dd/MM/yyyy', displayFormats: { day: 'dd/MM' } },
+                                ticks: { color: labelColor },
+                                grid: { color: gridColor }
+                            },
+                            y: {
+                                ticks: { color: labelColor, callback: (v) => formatCurrency(v) },
+                                grid: { color: gridColor }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: (c) => `Saldo: ${formatCurrency(c.parsed.y)}` } }
+                        }
+                    }
+                });
+                
+                // Gráfico 3: Comparativo Mensal (Barras)
+                // (Últimos 6 meses)
+                const labelsMeses = [];
+                const dataReceitasMeses = [];
+                const dataDespesasMeses = [];
+                
+                for (let i = 5; i >= 0; i--) {
+                    const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+                    const mes = data.getMonth();
+                    const ano = data.getFullYear();
+                    const mesAnoStr = `${ano}-${String(mes + 1).padStart(2, '0')}`;
+                    
+                    labelsMeses.push(data.toLocaleString('pt-BR', { month: 'short', year: 'numeric' }));
+
+                    const receitasMes = state.lancamentos
+                        .filter(l => l.data.startsWith(mesAnoStr) && l.tipo === 'receita')
+                        .reduce((acc, l) => acc + l.valor, 0);
+                    dataReceitasMeses.push(receitasMes);
+                    
+                    const despesasMes = state.lancamentos
+                        .filter(l => l.data.startsWith(mesAnoStr) && l.tipo === 'despesa')
+                        .reduce((acc, l) => acc + l.valor, 0);
+                    dataDespesasMeses.push(despesasMes);
+                }
+
+                const ctxComp = document.getElementById('chart-comparativo-meses').getContext('2d');
+                if (chartComparativo) chartComparativo.destroy();
+                chartComparativo = new Chart(ctxComp, {
+                    type: 'bar',
+                    data: {
+                        labels: labelsMeses,
+                        datasets: [
+                            {
+                                label: 'Receitas',
+                                data: dataReceitasMeses,
+                                backgroundColor: 'rgba(16, 185, 129, 0.7)', // green-500
+                            },
+                            {
+                                label: 'Despesas',
+                                data: dataDespesasMeses,
+                                backgroundColor: 'rgba(239, 68, 68, 0.7)', // red-500
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { color: labelColor }, grid: { color: gridColor } },
+                            y: { 
+                                ticks: { color: labelColor, callback: (v) => formatCurrency(v) }, 
+                                grid: { color: gridColor } 
+                            }
+                        },
+                        plugins: {
+                            legend: { labels: { color: legendColor } },
+                            tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${formatCurrency(c.parsed.y)}` } }
+                        }
+                    }
+                });
+            }
+            
+            // =============================================
+            // INICIALIZAÇÃO DA APLICAÇÃO
+            // =============================================
+            
+            // Sidebar (Mobile)
+            document.getElementById('open-sidebar-btn').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.remove('-translate-x-full');
+            });
+            document.getElementById('close-sidebar-btn').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+            });
+            
+            // Inicializa o tema
+            updateThemeUI(state.settings.theme);
+            
+            // Carrega a página inicial (baseada no hash ou padrão)
+            checkHash();
+
+        }); // Fim do DOMContentLoaded
+    </script>
+
+</body>
+</html>
